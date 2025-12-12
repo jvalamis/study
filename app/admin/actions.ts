@@ -24,6 +24,7 @@ export async function uploadTestAction(formData: FormData) {
 
     return { success: true, testId }
   } catch (error) {
-    return { error: "Failed to upload test" }
+    console.error("Error uploading test:", error)
+    return { error: error instanceof Error ? error.message : "Failed to upload test" }
   }
 }

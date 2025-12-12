@@ -6,16 +6,16 @@ const getRedisConfig = () => {
   // Try new Upstash format first (UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN)
   if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     return {
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      url: process.env.UPSTASH_REDIS_REST_URL.trim(),
+      token: process.env.UPSTASH_REDIS_REST_TOKEN.trim(),
     }
   }
   
   // Fall back to legacy KV format (KV_REST_API_URL, KV_REST_API_TOKEN)
   if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
     return {
-      url: process.env.KV_REST_API_URL,
-      token: process.env.KV_REST_API_TOKEN,
+      url: process.env.KV_REST_API_URL.trim(),
+      token: process.env.KV_REST_API_TOKEN.trim(),
     }
   }
   
