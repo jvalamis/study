@@ -1,6 +1,6 @@
 "use server"
 
-import { kv } from "@vercel/kv"
+import { redis } from "@/lib/redis"
 import { nanoid } from "nanoid"
 
 export async function uploadTestAction(formData: FormData) {
@@ -16,11 +16,11 @@ export async function uploadTestAction(formData: FormData) {
     // Generate unique ID
     const testId = nanoid(10)
 
-    // Save test to KV
-    await kv.set(`test:${testId}`, testData)
+    // Save test to Redis
+    await redis.set(`test:${testId}`, testData)
 
     // Add ID to set of all test IDs
-    await kv.sadd("test:ids", testId)
+    await redis.sadd("test:ids", testId)
 
     return { success: true, testId }
   } catch (error) {

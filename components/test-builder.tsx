@@ -99,7 +99,9 @@ export default function TestBuilder() {
         setMessage({ type: "error", text: result.error })
       } else {
         setMessage({ type: "success", text: "Test saved! Redirecting..." })
-        setTimeout(() => router.push("/"), 1500)
+        setTimeout(() => {
+          window.location.href = "/"
+        }, 1500)
       }
     } catch (error) {
       setMessage({ type: "error", text: "Failed to save test" })

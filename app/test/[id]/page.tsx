@@ -1,4 +1,4 @@
-import { kv } from "@vercel/kv"
+import { redis } from "@/lib/redis"
 import { notFound } from "next/navigation"
 import TestTaker from "@/components/test-taker"
 
@@ -7,7 +7,7 @@ interface Test {
   subject?: string
   grade?: string
   questions: Array<{
-    type: "multiple_choice" | "short_answer" | "numeric"
+    type: "multiple_choice" | "short_answer" | "numeric" | "spelling"
     prompt: string
     choices?: string[]
     answer: string | number
@@ -16,7 +16,7 @@ interface Test {
 
 export default async function TestPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const test = (await kv.get(`test:${id}`)) as Test | null
+  const test = (await redis.get(`test:${id}`)) as Test | null
 
   if (!test) {
     notFound()
