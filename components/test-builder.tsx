@@ -353,9 +353,18 @@ export default function TestBuilder() {
       )}
 
       {/* Save Button */}
-      <Button onClick={saveTest} disabled={saving || questions.length === 0 || !title} className="w-full" size="lg">
-        {saving ? "Saving..." : `💾 Save Test (${questions.length} questions)`}
-      </Button>
+      <div className="space-y-2">
+        {(!title || questions.length === 0) && (
+          <p className="text-sm text-muted-foreground text-center">
+            {!title && questions.length === 0 && "⚠️ Please add a test title and at least one question"}
+            {!title && questions.length > 0 && "⚠️ Please add a test title"}
+            {title && questions.length === 0 && "⚠️ Please add at least one question"}
+          </p>
+        )}
+        <Button onClick={saveTest} disabled={saving || questions.length === 0 || !title} className="w-full" size="lg">
+          {saving ? "Saving..." : `💾 Save Test (${questions.length} questions)`}
+        </Button>
+      </div>
     </div>
   )
 }
