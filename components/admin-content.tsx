@@ -2,19 +2,91 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { uploadTestAction } from "@/app/admin/actions"
+import { uploadTestAction, deleteTestAction, getAllTestsAction } from "@/app/admin/actions"
 import TestBuilder from "@/components/test-builder"
+import { X, Pencil, Trash2 } from "lucide-react"
+
+interface Test {
+  id: string
+  title: string
+  subject?: string
+  grade?: string
+  questions: Array<{
+    type: "multiple_choice" | "short_answer" | "numeric" | "spelling"
+    prompt: string
+    choices?: string[]
+    answer: string | number
+  }>
+}
 
 export default function AdminContent() {
-  const [mode, setMode] = useState<"builder" | "upload">("builder")
+  const [mode, setMode] = useState<"builder" | "upload" | "manage">("builder")
+  const [editTest, setEditTest] = useState<Test | null>(null)
+  const [tests, setTests] = useState<Test[]>([])
+  const [loadingTests, setLoadingTests] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    if (mode === "manage") {
+      loadTests()
+    }
+  }, [mode])
+
+  const loadTests = async () => {
+    setLoadingTests(true)
+    try {
+      const result = await getAllTestsAction()
+      if (result.success && result.tests) {
+        setTests(result.tests)
+      } else {
+        setMessage({ type: "error", text: result.error || "Failed to load tests" })
+      }
+    } catch (error) {
+      setMessage({ type: "error", text: "Failed to load tests" })
+    } finally {
+      setLoadingTests(false)
+    }
+  }
+
+  const handleDelete = async (testId: string, testTitle: string) => {
+    if (!confirm(`Are you sure you want to delete "${testTitle}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const formData = new FormData()
+      formData.append("testId", testId)
+      const result = await deleteTestAction(formData)
+
+      if (result.error) {
+        setMessage({ type: "error", text: result.error })
+      } else {
+        setMessage({ type: "success", text: "Test deleted successfully!" })
+        loadTests()
+      }
+    } catch (error) {
+      setMessage({ type: "error", text: "Failed to delete test" })
+    }
+  }
+
+  const handleEdit = (test: Test) => {
+    setEditTest(test)
+    setMode("builder")
+  }
+
+  const handleSaveComplete = () => {
+    setEditTest(null)
+    setMode("manage")
+    loadTests()
+    router.refresh()
+  }
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -85,25 +157,110 @@ export default function AdminContent() {
 
         <div className="flex gap-3 mb-6">
           <Button
-            onClick={() => setMode("builder")}
+            onClick={() => {
+              setMode("builder")
+              setEditTest(null)
+            }}
             variant={mode === "builder" ? "default" : "outline"}
             size="lg"
             className="flex-1"
           >
-            🎮 Build Test
+            {editTest ? "✏️ Edit Test" : "🎮 Build Test"}
           </Button>
           <Button
-            onClick={() => setMode("upload")}
+            onClick={() => {
+              setMode("upload")
+              setEditTest(null)
+            }}
             variant={mode === "upload" ? "default" : "outline"}
             size="lg"
             className="flex-1"
           >
             📁 Upload JSON
           </Button>
+          <Button
+            onClick={() => {
+              setMode("manage")
+              setEditTest(null)
+            }}
+            variant={mode === "manage" ? "default" : "outline"}
+            size="lg"
+            className="flex-1"
+          >
+            📋 Manage Tests
+          </Button>
         </div>
 
+        {message && (
+          <div
+            className={`p-4 rounded-lg border-2 text-center font-semibold mb-4 ${
+              message.type === "success"
+                ? "bg-secondary/20 border-secondary text-secondary-foreground"
+                : "bg-destructive/20 border-destructive text-destructive-foreground"
+            }`}
+          >
+            {message.text}
+          </div>
+        )}
+
         {mode === "builder" ? (
-          <TestBuilder />
+          <TestBuilder editTest={editTest || undefined} onSaveComplete={handleSaveComplete} />
+        ) : mode === "manage" ? (
+          <Card className="border-2">
+            <CardHeader>
+              <CardTitle className="text-2xl">📋 Manage Tests</CardTitle>
+              <CardDescription>Edit or delete existing tests</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingTests ? (
+                <div className="text-center py-8">Loading tests...</div>
+              ) : tests.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No tests found. Create your first test!
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {tests.map((test) => (
+                    <div
+                      key={test.id}
+                      className="p-4 bg-background rounded-lg border-2 flex justify-between items-start gap-4 hover:border-primary transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-lg mb-1">{test.title}</h3>
+                        <div className="text-sm text-muted-foreground mb-2">
+                          {test.subject && <span className="mr-3">📚 {test.subject}</span>}
+                          {test.grade && <span>🎓 Grade {test.grade}</span>}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {test.questions.length} question{test.questions.length !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(test)}
+                          className="border-2"
+                        >
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(test.id, test.title)}
+                          className="border-2"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         ) : (
           <Card className="border-2">
             <CardHeader>
@@ -139,17 +296,6 @@ export default function AdminContent() {
                 </label>
               </div>
 
-              {message && (
-                <div
-                  className={`mt-4 p-3 rounded ${
-                    message.type === "success"
-                      ? "bg-secondary/20 text-secondary-foreground"
-                      : "bg-destructive/20 text-destructive-foreground"
-                  }`}
-                >
-                  {message.text}
-                </div>
-              )}
 
               <div className="mt-6 p-4 bg-muted rounded text-sm">
                 <p className="font-medium mb-2">Expected JSON format:</p>

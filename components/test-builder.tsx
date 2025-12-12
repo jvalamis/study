@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { uploadTestAction } from "@/app/admin/actions"
+import { uploadTestAction, updateTestAction } from "@/app/admin/actions"
 import { X, Plus } from "lucide-react"
 
 interface Question {
@@ -18,11 +18,22 @@ interface Question {
   answer: string
 }
 
-export default function TestBuilder() {
-  const [title, setTitle] = useState("")
-  const [subject, setSubject] = useState("")
-  const [grade, setGrade] = useState("")
-  const [questions, setQuestions] = useState<Question[]>([])
+interface TestBuilderProps {
+  editTest?: {
+    id: string
+    title: string
+    subject?: string
+    grade?: string
+    questions: Question[]
+  }
+  onSaveComplete?: () => void
+}
+
+export default function TestBuilder({ editTest, onSaveComplete }: TestBuilderProps) {
+  const [title, setTitle] = useState(editTest?.title || "")
+  const [subject, setSubject] = useState(editTest?.subject || "")
+  const [grade, setGrade] = useState(editTest?.grade || "")
+  const [questions, setQuestions] = useState<Question[]>(editTest?.questions || [])
   const [currentQuestion, setCurrentQuestion] = useState<Question>({
     type: "multiple_choice",
     prompt: "",
@@ -93,15 +104,29 @@ export default function TestBuilder() {
       const formData = new FormData()
       formData.append("testData", JSON.stringify(testData))
 
-      const result = await uploadTestAction(formData)
+      let result
+      if (editTest?.id) {
+        // Update existing test
+        formData.append("testId", editTest.id)
+        result = await updateTestAction(formData)
+      } else {
+        // Create new test
+        result = await uploadTestAction(formData)
+      }
 
       if (result.error) {
         setMessage({ type: "error", text: result.error })
       } else {
-        setMessage({ type: "success", text: "Test saved! Redirecting..." })
-        setTimeout(() => {
-          window.location.href = "/"
-        }, 1500)
+        setMessage({ type: "success", text: editTest?.id ? "Test updated! Redirecting..." : "Test saved! Redirecting..." })
+        if (onSaveComplete) {
+          setTimeout(() => {
+            onSaveComplete()
+          }, 1500)
+        } else {
+          setTimeout(() => {
+            window.location.href = "/"
+          }, 1500)
+        }
       }
     } catch (error) {
       setMessage({ type: "error", text: "Failed to save test" })
@@ -364,7 +389,7 @@ export default function TestBuilder() {
           </p>
         )}
         <Button onClick={saveTest} disabled={saving || questions.length === 0 || !title} className="w-full" size="lg">
-          {saving ? "Saving..." : `💾 Save Test (${questions.length} questions)`}
+          {saving ? (editTest?.id ? "Updating..." : "Saving...") : `💾 ${editTest?.id ? "Update" : "Save"} Test (${questions.length} questions)`}
         </Button>
       </div>
     </div>
