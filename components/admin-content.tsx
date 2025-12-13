@@ -6,9 +6,9 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { uploadTestAction, deleteTestAction, getAllTestsAction, getTestResultsCountAction } from "@/app/admin/actions"
+import { uploadTestAction, deleteTestAction, getAllTestsAction, getTestResultsCountAction, getTestResultsAction } from "@/app/admin/actions"
 import TestBuilder from "@/components/test-builder"
-import { X, Pencil, Trash2 } from "lucide-react"
+import { X, Pencil, Trash2, BarChart3 } from "lucide-react"
 
 interface Test {
   id: string
@@ -24,11 +24,15 @@ interface Test {
 }
 
 export default function AdminContent() {
-  const [mode, setMode] = useState<"builder" | "upload" | "manage">("builder")
+  const [mode, setMode] = useState<"builder" | "upload" | "manage" | "grades">("builder")
   const [editTest, setEditTest] = useState<Test | null>(null)
+  const [selectedTestForGrades, setSelectedTestForGrades] = useState<Test | null>(null)
   const [tests, setTests] = useState<Test[]>([])
   const [testResultsCounts, setTestResultsCounts] = useState<Record<string, number>>({})
+  const [testResults, setTestResults] = useState<any[]>([])
+  const [testStatistics, setTestStatistics] = useState<any>(null)
   const [loadingTests, setLoadingTests] = useState(false)
+  const [loadingGrades, setLoadingGrades] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -39,6 +43,25 @@ export default function AdminContent() {
       loadTests()
     }
   }, [mode])
+
+  const handleViewGrades = async (test: Test) => {
+    setSelectedTestForGrades(test)
+    setMode("grades")
+    setLoadingGrades(true)
+    try {
+      const result = await getTestResultsAction(test.id)
+      if (result.success) {
+        setTestResults(result.results || [])
+        setTestStatistics(result.statistics || null)
+      } else {
+        setMessage({ type: "error", text: result.error || "Failed to load grades" })
+      }
+    } catch (error) {
+      setMessage({ type: "error", text: "Failed to load grades" })
+    } finally {
+      setLoadingGrades(false)
+    }
+  }
 
   const loadTests = async () => {
     setLoadingTests(true)
@@ -205,12 +228,27 @@ export default function AdminContent() {
             onClick={() => {
               setMode("manage")
               setEditTest(null)
+              setSelectedTestForGrades(null)
             }}
             variant={mode === "manage" ? "default" : "outline"}
             size="lg"
             className="flex-1"
           >
             📋 Manage Tests
+          </Button>
+          <Button
+            onClick={() => {
+              setMode("grades")
+              setEditTest(null)
+              if (mode !== "grades") {
+                loadTests()
+              }
+            }}
+            variant={mode === "grades" ? "default" : "outline"}
+            size="lg"
+            className="flex-1"
+          >
+            📊 View Grades
           </Button>
         </div>
 
@@ -269,6 +307,16 @@ export default function AdminContent() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => handleViewGrades(test)}
+                          className="border-2"
+                          disabled={!testResultsCounts[test.id] || testResultsCounts[test.id] === 0}
+                        >
+                          <BarChart3 className="w-4 h-4 mr-2" />
+                          Grades
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleEdit(test)}
                           className="border-2"
                         >
@@ -291,6 +339,168 @@ export default function AdminContent() {
               )}
             </CardContent>
           </Card>
+        ) : mode === "grades" ? (
+          <div className="space-y-6">
+            {selectedTestForGrades ? (
+              <>
+                <Card className="border-2">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-2xl">📊 Grades for: {selectedTestForGrades.title}</CardTitle>
+                        <CardDescription>
+                          {selectedTestForGrades.subject && `📚 ${selectedTestForGrades.subject}`}
+                          {selectedTestForGrades.grade && ` • 🎓 Grade ${selectedTestForGrades.grade}`}
+                        </CardDescription>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedTestForGrades(null)
+                          setTestResults([])
+                          setTestStatistics(null)
+                        }}
+                      >
+                        ← Back to All Tests
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingGrades ? (
+                      <div className="text-center py-8">Loading grades...</div>
+                    ) : testStatistics && testStatistics.total > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div className="p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
+                          <p className="text-sm text-muted-foreground mb-1">Total Attempts</p>
+                          <p className="text-2xl font-bold text-primary">{testStatistics.total}</p>
+                        </div>
+                        <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg border-2 border-green-200 dark:border-green-800">
+                          <p className="text-sm text-muted-foreground mb-1">Average Score</p>
+                          <p className="text-2xl font-bold text-green-700 dark:text-green-300">{testStatistics.average}%</p>
+                        </div>
+                        <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border-2 border-blue-200 dark:border-blue-800">
+                          <p className="text-sm text-muted-foreground mb-1">Highest Score</p>
+                          <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{testStatistics.highest}%</p>
+                        </div>
+                        <div className="p-4 bg-orange-50 dark:bg-orange-950 rounded-lg border-2 border-orange-200 dark:border-orange-800">
+                          <p className="text-sm text-muted-foreground mb-1">Lowest Score</p>
+                          <p className="text-2xl font-bold text-orange-700 dark:text-orange-300">{testStatistics.lowest}%</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No grades recorded yet for this test.
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {testResults.length > 0 && (
+                  <Card className="border-2">
+                    <CardHeader>
+                      <CardTitle>Grade History</CardTitle>
+                      <CardDescription>All recorded attempts for this test</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {testResults.map((result: any, index: number) => {
+                          const date = new Date(result.timestamp)
+                          const isHighScore = result.percentage >= 80
+                          const isLowScore = result.percentage < 60
+                          
+                          return (
+                            <div
+                              key={result.resultId || index}
+                              className={`p-4 rounded-lg border-2 ${
+                                isHighScore
+                                  ? "bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800"
+                                  : isLowScore
+                                  ? "bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800"
+                                  : "bg-background border-border"
+                              }`}
+                            >
+                              <div className="flex justify-between items-start mb-2">
+                                <div>
+                                  <p className="font-semibold text-lg">
+                                    Score: {result.correct} / {result.total} ({result.percentage}%)
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {date.toLocaleDateString()} at {date.toLocaleTimeString()}
+                                  </p>
+                                </div>
+                                <div className="text-2xl">
+                                  {result.percentage >= 80 ? "🌟" : result.percentage >= 60 ? "👍" : "💪"}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            ) : (
+              <Card className="border-2">
+                <CardHeader>
+                  <CardTitle className="text-2xl">📊 View Grades</CardTitle>
+                  <CardDescription>Select a test to view its grade history and statistics</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {loadingTests ? (
+                    <div className="text-center py-8">Loading tests...</div>
+                  ) : tests.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No tests found. Create your first test!
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {tests.map((test) => {
+                        const gradeCount = testResultsCounts[test.id] || 0
+                        return (
+                          <div
+                            key={test.id}
+                            className="p-4 bg-background rounded-lg border-2 flex justify-between items-start gap-4 hover:border-primary transition-colors cursor-pointer"
+                            onClick={() => gradeCount > 0 && handleViewGrades(test)}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-lg mb-1">{test.title}</h3>
+                              <div className="text-sm text-muted-foreground mb-2">
+                                {test.subject && <span className="mr-3">📚 {test.subject}</span>}
+                                {test.grade && <span>🎓 Grade {test.grade}</span>}
+                              </div>
+                              <div className="flex gap-4 text-sm">
+                                <p className="text-muted-foreground">
+                                  {test.questions.length} question{test.questions.length !== 1 ? "s" : ""}
+                                </p>
+                                <p className={gradeCount > 0 ? "text-primary font-medium" : "text-muted-foreground"}>
+                                  📊 {gradeCount} grade{gradeCount !== 1 ? 's' : ''} recorded
+                                </p>
+                              </div>
+                            </div>
+                            {gradeCount > 0 && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleViewGrades(test)
+                                }}
+                                className="border-2 shrink-0"
+                              >
+                                <BarChart3 className="w-4 h-4 mr-2" />
+                                View Grades
+                              </Button>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
         ) : (
           <Card className="border-2">
             <CardHeader>

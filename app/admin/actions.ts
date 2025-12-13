@@ -171,6 +171,55 @@ export async function getTestResultsCountAction(testId: string) {
   }
 }
 
+export async function getTestResultsAction(testId: string) {
+  try {
+    // Get all result IDs for this test
+    const resultIds = ((await redis.smembers(`test:${testId}:results`)) as string[]) || []
+
+    // Fetch all results
+    const results = []
+    for (const resultId of resultIds) {
+      try {
+        const result = (await redis.get(`test:${testId}:result:${resultId}`)) as any
+        if (result) {
+          results.push(result)
+        }
+      } catch (error) {
+        console.error(`Error fetching result ${resultId}:`, error)
+      }
+    }
+
+    // Sort by timestamp (newest first)
+    results.sort((a, b) => {
+      const timeA = new Date(a.timestamp || 0).getTime()
+      const timeB = new Date(b.timestamp || 0).getTime()
+      return timeB - timeA
+    })
+
+    // Calculate statistics
+    const percentages = results.map((r: any) => r.percentage || 0)
+    const average = percentages.length > 0
+      ? Math.round(percentages.reduce((a: number, b: number) => a + b, 0) / percentages.length)
+      : 0
+    const highest = percentages.length > 0 ? Math.max(...percentages) : 0
+    const lowest = percentages.length > 0 ? Math.min(...percentages) : 0
+
+    return {
+      success: true,
+      results,
+      statistics: {
+        total: results.length,
+        average,
+        highest,
+        lowest,
+      },
+    }
+  } catch (error) {
+    console.error("Error fetching test results:", error)
+    return { error: error instanceof Error ? error.message : "Failed to fetch test results" }
+  }
+}
+
 async function deleteTestResults(testId: string) {
   try {
     // Get all result IDs for this test
