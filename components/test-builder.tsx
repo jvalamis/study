@@ -134,7 +134,12 @@ export default function TestBuilder({ editTest, onSaveComplete }: TestBuilderPro
       if (result.error) {
         setMessage({ type: "error", text: result.error })
       } else {
-        setMessage({ type: "success", text: editTest?.id ? "Test updated! Redirecting..." : "Test saved! Redirecting..." })
+        let successMessage = editTest?.id ? "Test updated!" : "Test saved!"
+        if (result.deletedResults && result.deletedResultsCount > 0) {
+          successMessage += ` Deleted ${result.deletedResultsCount} grade record${result.deletedResultsCount !== 1 ? 's' : ''}.`
+        }
+        successMessage += " Redirecting..."
+        setMessage({ type: "success", text: successMessage })
         if (onSaveComplete) {
           setTimeout(() => {
             onSaveComplete()
