@@ -27,16 +27,48 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [answers, setAnswers] = useState<(string | number)[]>(Array(test.questions.length).fill(""))
   const [submitted, setSubmitted] = useState(false)
+  const [voicesLoaded, setVoicesLoaded] = useState(false)
   const router = useRouter()
 
   const question = test.questions[currentQuestion]
   const isLastQuestion = currentQuestion === test.questions.length - 1
 
+  // Load voices when component mounts (voices may not be available immediately)
+  useEffect(() => {
+    if ("speechSynthesis" in window) {
+      const loadVoices = () => {
+        const voices = window.speechSynthesis.getVoices()
+        if (voices.length > 0) {
+          setVoicesLoaded(true)
+        }
+      }
+      
+      // Try loading immediately
+      loadVoices()
+      
+      // Some browsers load voices asynchronously
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = loadVoices
+      }
+      
+      return () => {
+        if (window.speechSynthesis.onvoiceschanged) {
+          window.speechSynthesis.onvoiceschanged = null
+        }
+      }
+    }
+  }, [])
+
   useEffect(() => {
     if (question.type === "spelling") {
-      speakWord(question.prompt)
+      // Small delay to ensure voices are ready, or use immediately if not loaded yet
+      const timer = setTimeout(() => {
+        speakWord(question.prompt)
+      }, voicesLoaded ? 100 : 500)
+      return () => clearTimeout(timer)
     }
-  }, [currentQuestion, question])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestion, question.type, question.prompt, voicesLoaded])
 
   const speakWord = (word: string) => {
     if ("speechSynthesis" in window) {
@@ -44,9 +76,48 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
       window.speechSynthesis.cancel()
 
       const utterance = new SpeechSynthesisUtterance(word)
-      utterance.rate = 0.8 // Slightly slower for kids
-      utterance.pitch = 1
+      
+      // Get available voices and select a child-friendly one
+      const voices = window.speechSynthesis.getVoices()
+      
+      if (voices.length > 0) {
+        // Prefer female voices that are clear and friendly for kids
+        // Common child-friendly voices: Google US English Female, Microsoft Zira, etc.
+        const preferredVoices = voices.filter(voice => {
+          const name = voice.name.toLowerCase()
+          const lang = voice.lang.toLowerCase()
+          return (
+            (name.includes('female') && lang.includes('en')) ||
+            name.includes('zira') ||
+            name.includes('samantha') ||
+            name.includes('karen') ||
+            name.includes('susan') ||
+            name.includes('hazel') ||
+            (name.includes('google') && name.includes('female')) ||
+            (name.includes('siri') && lang.includes('en'))
+          )
+        })
+        
+        // Use preferred voice if available, otherwise use first English voice
+        if (preferredVoices.length > 0) {
+          utterance.voice = preferredVoices[0]
+        } else {
+          // Fallback to first English voice
+          const englishVoices = voices.filter(v => v.lang.toLowerCase().includes('en'))
+          if (englishVoices.length > 0) {
+            utterance.voice = englishVoices[0]
+          } else {
+            utterance.voice = voices[0]
+          }
+        }
+      }
+      
+      // Optimize for children: slower, slightly higher pitch, clear
+      utterance.rate = 0.75 // Slower for better comprehension
+      utterance.pitch = 1.1 // Slightly higher pitch (more friendly)
       utterance.volume = 1
+      utterance.lang = 'en-US' // Ensure English pronunciation
+      
       window.speechSynthesis.speak(utterance)
     }
   }
@@ -166,15 +237,18 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
           <CardHeader>
             {question.type === "spelling" ? (
               <div className="space-y-4">
-                <CardTitle className="text-xl">Listen and spell the word</CardTitle>
+                <div className="text-center">
+                  <CardTitle className="text-2xl mb-2">🔊 Listen and Spell</CardTitle>
+                  <p className="text-muted-foreground">The word will be read aloud for you</p>
+                </div>
                 <Button
                   onClick={() => speakWord(question.prompt)}
                   size="lg"
-                  className="w-full text-lg"
-                  variant="secondary"
+                  className="w-full text-xl h-14 bg-primary hover:bg-primary/90 shadow-lg"
+                  variant="default"
                 >
-                  <Volume2 className="w-6 h-6 mr-2" />
-                  Play Word Again
+                  <Volume2 className="w-7 h-7 mr-3" />
+                  🔊 Play Word Again
                 </Button>
               </div>
             ) : (
@@ -197,15 +271,56 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
               </RadioGroup>
             )}
 
-            {(question.type === "short_answer" || question.type === "spelling") && (
+            {question.type === "short_answer" && (
               <Input
                 type="text"
                 value={String(answers[currentQuestion])}
                 onChange={(e) => handleAnswer(e.target.value)}
-                placeholder={question.type === "spelling" ? "Type the word you heard" : "Type your answer here"}
+                placeholder="Type your answer here"
                 className="text-lg"
-                autoFocus={question.type === "spelling"}
               />
+            )}
+
+            {question.type === "spelling" && (
+              <div className="space-y-4">
+                <div className="relative">
+                  <Input
+                    type="text"
+                    value={String(answers[currentQuestion])}
+                    onChange={(e) => handleAnswer(e.target.value)}
+                    placeholder="Type the word you heard..."
+                    className="text-3xl font-bold text-center h-16 border-4 border-primary/30 focus:border-primary focus:ring-4 focus:ring-primary/20"
+                    autoFocus={true}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  {answers[currentQuestion] && (
+                    <div className="absolute -bottom-6 left-0 right-0 text-center text-sm text-muted-foreground">
+                      {String(answers[currentQuestion]).length} letter{String(answers[currentQuestion]).length !== 1 ? 's' : ''}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Visual letter feedback */}
+                {answers[currentQuestion] && (
+                  <div className="flex justify-center gap-2 flex-wrap">
+                    {String(answers[currentQuestion]).split('').map((letter, idx) => (
+                      <div
+                        key={idx}
+                        className="w-12 h-12 rounded-lg border-2 border-primary/50 bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary"
+                      >
+                        {letter.toUpperCase()}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">
+                    💡 Listen carefully and type each letter
+                  </p>
+                </div>
+              </div>
             )}
 
             {question.type === "numeric" && (
