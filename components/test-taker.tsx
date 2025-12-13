@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Volume2 } from "lucide-react"
+import { saveTestResultAction } from "@/app/admin/actions"
 
 interface Question {
   type: "multiple_choice" | "short_answer" | "numeric" | "spelling"
@@ -27,6 +28,7 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [answers, setAnswers] = useState<(string | number)[]>(Array(test.questions.length).fill(""))
   const [submitted, setSubmitted] = useState(false)
+  const [savingGrade, setSavingGrade] = useState(false)
   const [voicesLoaded, setVoicesLoaded] = useState(false)
   const router = useRouter()
 
@@ -128,9 +130,35 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
     setAnswers(newAnswers)
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (isLastQuestion) {
-      setSubmitted(true)
+      // Calculate results and save grade
+      const { correct, total, results } = calculateResults()
+      const percentage = Math.round((correct / total) * 100)
+      
+      setSavingGrade(true)
+      try {
+        const formData = new FormData()
+        formData.append("testId", testId)
+        formData.append("resultData", JSON.stringify({
+          correct,
+          total,
+          percentage,
+          answers: answers.map((ans, idx) => ({
+            questionIndex: idx,
+            answer: ans,
+            isCorrect: results[idx].isCorrect,
+          })),
+        }))
+        
+        await saveTestResultAction(formData)
+      } catch (error) {
+        console.error("Error saving grade:", error)
+        // Continue even if saving fails
+      } finally {
+        setSavingGrade(false)
+        setSubmitted(true)
+      }
     } else {
       setCurrentQuestion(currentQuestion + 1)
     }
@@ -157,6 +185,8 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
   if (submitted) {
     const { correct, total, results } = calculateResults()
     const percentage = Math.round((correct / total) * 100)
+    
+    // Note: Grade was already saved in handleNext
 
     return (
       <main className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-50 p-4 md:p-8">

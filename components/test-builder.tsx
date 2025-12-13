@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { uploadTestAction, updateTestAction } from "@/app/admin/actions"
+import { uploadTestAction, updateTestAction, getTestResultsCountAction } from "@/app/admin/actions"
 import { X, Plus } from "lucide-react"
 
 interface Question {
@@ -42,7 +42,23 @@ export default function TestBuilder({ editTest, onSaveComplete }: TestBuilderPro
   })
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [resultsCount, setResultsCount] = useState<number | null>(null)
+  const [deleteResults, setDeleteResults] = useState(false)
   const router = useRouter()
+
+  // Check for grade data when editing
+  useEffect(() => {
+    if (editTest?.id) {
+      getTestResultsCountAction(editTest.id).then((result) => {
+        if (result.success) {
+          setResultsCount(result.count || 0)
+        }
+      })
+    } else {
+      setResultsCount(null)
+      setDeleteResults(false)
+    }
+  }, [editTest?.id])
 
   console.log("[v0] Test Builder State:", {
     title,
@@ -108,6 +124,7 @@ export default function TestBuilder({ editTest, onSaveComplete }: TestBuilderPro
       if (editTest?.id) {
         // Update existing test
         formData.append("testId", editTest.id)
+        formData.append("deleteResults", deleteResults ? "true" : "false")
         result = await updateTestAction(formData)
       } else {
         // Create new test
@@ -377,6 +394,33 @@ export default function TestBuilder({ editTest, onSaveComplete }: TestBuilderPro
         >
           {message.text}
         </div>
+      )}
+
+      {/* Warning for editing tests with grade data */}
+      {editTest?.id && resultsCount !== null && resultsCount > 0 && (
+        <Card className="border-2 border-yellow-500 bg-yellow-50 dark:bg-yellow-950">
+          <CardContent className="pt-6">
+            <div className="space-y-3">
+              <p className="font-semibold text-yellow-900 dark:text-yellow-100">
+                ⚠️ Warning: This test has {resultsCount} recorded grade{resultsCount !== 1 ? 's' : ''}
+              </p>
+              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                If you update this test, the existing grade data may become invalid because the questions have changed.
+              </p>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={deleteResults}
+                  onChange={(e) => setDeleteResults(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
+                  Delete all {resultsCount} grade record{resultsCount !== 1 ? 's' : ''} when updating this test
+                </span>
+              </label>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Save Button */}

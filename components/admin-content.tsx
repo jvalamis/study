@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { uploadTestAction, deleteTestAction, getAllTestsAction } from "@/app/admin/actions"
+import { uploadTestAction, deleteTestAction, getAllTestsAction, getTestResultsCountAction } from "@/app/admin/actions"
 import TestBuilder from "@/components/test-builder"
 import { X, Pencil, Trash2 } from "lucide-react"
 
@@ -27,6 +27,7 @@ export default function AdminContent() {
   const [mode, setMode] = useState<"builder" | "upload" | "manage">("builder")
   const [editTest, setEditTest] = useState<Test | null>(null)
   const [tests, setTests] = useState<Test[]>([])
+  const [testResultsCounts, setTestResultsCounts] = useState<Record<string, number>>({})
   const [loadingTests, setLoadingTests] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -45,6 +46,14 @@ export default function AdminContent() {
       const result = await getAllTestsAction()
       if (result.success && result.tests) {
         setTests(result.tests)
+        
+        // Load result counts for each test
+        const counts: Record<string, number> = {}
+        for (const test of result.tests) {
+          const countResult = await getTestResultsCountAction(test.id)
+          counts[test.id] = countResult.count || 0
+        }
+        setTestResultsCounts(counts)
       } else {
         setMessage({ type: "error", text: result.error || "Failed to load tests" })
       }
@@ -56,7 +65,17 @@ export default function AdminContent() {
   }
 
   const handleDelete = async (testId: string, testTitle: string) => {
-    if (!confirm(`Are you sure you want to delete "${testTitle}"? This action cannot be undone.`)) {
+    const resultsCount = testResultsCounts[testId] || 0
+    const hasResults = resultsCount > 0
+    
+    let confirmMessage = `Are you sure you want to delete "${testTitle}"?`
+    if (hasResults) {
+      confirmMessage += `\n\n⚠️ WARNING: This test has ${resultsCount} recorded grade${resultsCount !== 1 ? 's' : ''}. All grade data will be permanently deleted. This action cannot be undone.`
+    } else {
+      confirmMessage += "\n\nThis action cannot be undone."
+    }
+    
+    if (!confirm(confirmMessage)) {
       return
     }
 
@@ -68,7 +87,11 @@ export default function AdminContent() {
       if (result.error) {
         setMessage({ type: "error", text: result.error })
       } else {
-        setMessage({ type: "success", text: "Test deleted successfully!" })
+        const deletedCount = result.deletedResultsCount || 0
+        const message = deletedCount > 0
+          ? `Test deleted successfully! Also deleted ${deletedCount} grade record${deletedCount !== 1 ? 's' : ''}.`
+          : "Test deleted successfully!"
+        setMessage({ type: "success", text: message })
         loadTests()
       }
     } catch (error) {
@@ -231,9 +254,16 @@ export default function AdminContent() {
                           {test.subject && <span className="mr-3">📚 {test.subject}</span>}
                           {test.grade && <span>🎓 Grade {test.grade}</span>}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {test.questions.length} question{test.questions.length !== 1 ? "s" : ""}
-                        </p>
+                        <div className="flex gap-4 text-sm text-muted-foreground">
+                          <p>
+                            {test.questions.length} question{test.questions.length !== 1 ? "s" : ""}
+                          </p>
+                          {testResultsCounts[test.id] !== undefined && (
+                            <p className={testResultsCounts[test.id] > 0 ? "text-primary font-medium" : ""}>
+                              📊 {testResultsCounts[test.id] || 0} grade{testResultsCounts[test.id] !== 1 ? 's' : ''} recorded
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <div className="flex gap-2 shrink-0">
                         <Button
