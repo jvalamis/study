@@ -130,7 +130,21 @@ export async function saveTestResultAction(formData: FormData) {
   try {
     const testId = formData.get("testId") as string
     const resultDataString = formData.get("resultData") as string
-    const resultData = JSON.parse(resultDataString)
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'actions.ts:131',message:'saveTestResultAction entry',data:{testId,hasResultData:!!resultDataString,resultDataLength:resultDataString?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    let resultData
+    try {
+      resultData = JSON.parse(resultDataString)
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'actions.ts:135',message:'JSON parse success',data:{hasResultData:!!resultData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+    } catch (parseError) {
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'actions.ts:138',message:'JSON parse error',data:{error:parseError instanceof Error?parseError.message:String(parseError)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
+      return { error: "Invalid result data format" }
+    }
 
     if (!testId || !resultData) {
       return { error: "Test ID and result data are required" }

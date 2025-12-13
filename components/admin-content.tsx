@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -38,32 +38,7 @@ export default function AdminContent() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const router = useRouter()
 
-  useEffect(() => {
-    if (mode === "manage") {
-      loadTests()
-    }
-  }, [mode])
-
-  const handleViewGrades = async (test: Test) => {
-    setSelectedTestForGrades(test)
-    setMode("grades")
-    setLoadingGrades(true)
-    try {
-      const result = await getTestResultsAction(test.id)
-      if (result.success) {
-        setTestResults(result.results || [])
-        setTestStatistics(result.statistics || null)
-      } else {
-        setMessage({ type: "error", text: result.error || "Failed to load grades" })
-      }
-    } catch (error) {
-      setMessage({ type: "error", text: "Failed to load grades" })
-    } finally {
-      setLoadingGrades(false)
-    }
-  }
-
-  const loadTests = async () => {
+  const loadTests = useCallback(async () => {
     setLoadingTests(true)
     try {
       const result = await getAllTestsAction()
@@ -84,6 +59,31 @@ export default function AdminContent() {
       setMessage({ type: "error", text: "Failed to load tests" })
     } finally {
       setLoadingTests(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (mode === "manage") {
+      loadTests()
+    }
+  }, [mode, loadTests])
+
+  const handleViewGrades = async (test: Test) => {
+    setSelectedTestForGrades(test)
+    setMode("grades")
+    setLoadingGrades(true)
+    try {
+      const result = await getTestResultsAction(test.id)
+      if (result.success) {
+        setTestResults(result.results || [])
+        setTestStatistics(result.statistics || null)
+      } else {
+        setMessage({ type: "error", text: result.error || "Failed to load grades" })
+      }
+    } catch (error) {
+      setMessage({ type: "error", text: "Failed to load grades" })
+    } finally {
+      setLoadingGrades(false)
     }
   }
 
