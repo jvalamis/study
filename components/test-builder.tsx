@@ -15,7 +15,7 @@ interface Question {
   type: "multiple_choice" | "short_answer" | "numeric" | "spelling"
   prompt: string
   choices?: string[]
-  answer: string
+  answer: string | number
 }
 
 interface TestBuilderProps {
