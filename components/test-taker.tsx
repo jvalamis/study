@@ -410,19 +410,18 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
         <Card>
           <CardHeader>
             {question.type === "spelling" ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="text-center">
-                  <CardTitle className="text-2xl mb-2">🔊 Listen and Spell</CardTitle>
-                  <p className="text-muted-foreground">The word will be read aloud for you</p>
+                  <CardTitle className="text-2xl mb-1">🔊 Listen and Spell</CardTitle>
                 </div>
                 <Button
                   onClick={() => speakWord(question.prompt)}
                   size="lg"
-                  className="w-full text-xl h-14 bg-primary hover:bg-primary/90 shadow-lg"
+                  className="w-full text-lg h-12 bg-primary hover:bg-primary/90"
                   variant="default"
                 >
-                  <Volume2 className="w-7 h-7 mr-3" />
-                  🔊 Play Word Again
+                  <Volume2 className="w-5 h-5 mr-2" />
+                  Play Word Again
                 </Button>
               </div>
             ) : (
@@ -456,52 +455,17 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
             )}
 
             {question.type === "spelling" && (
-              <div className="space-y-4">
-                <div className="text-center p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border-2 border-blue-200 dark:border-blue-800">
-                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
-                    💡 Tip: Listen carefully and type the word you hear!
-                  </p>
-                  <p className="text-xs text-blue-700 dark:text-blue-300">
-                    Click the button above to hear the word again if needed.
-                  </p>
-                </div>
-                <div className="relative">
-                  <Input
-                    type="text"
-                    value={String(answers[currentQuestion])}
-                    onChange={(e) => handleAnswer(e.target.value)}
-                    placeholder="Type the word you heard..."
-                    className="text-3xl font-bold text-center h-16 border-4 border-primary/30 focus:border-primary focus:ring-4 focus:ring-primary/20"
-                    autoFocus={true}
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                  {answers[currentQuestion] && (
-                    <div className="absolute -bottom-6 left-0 right-0 text-center text-sm text-muted-foreground">
-                      {String(answers[currentQuestion]).length} letter{String(answers[currentQuestion]).length !== 1 ? 's' : ''}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Visual letter feedback */}
-                {answers[currentQuestion] && (
-                  <div className="flex justify-center gap-2 flex-wrap">
-                    {String(answers[currentQuestion]).split('').map((letter, idx) => (
-                      <div
-                        key={idx}
-                        className="w-12 h-12 rounded-lg border-2 border-primary/50 bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary"
-                      >
-                        {letter.toUpperCase()}
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">
-                    💡 Listen carefully and type each letter
-                  </p>
-                </div>
+              <div className="space-y-6">
+                <Input
+                  type="text"
+                  value={String(answers[currentQuestion])}
+                  onChange={(e) => handleAnswer(e.target.value)}
+                  placeholder="Type the word you heard..."
+                  className="text-3xl font-bold text-center h-20 border-4 border-primary/30 focus:border-primary focus:ring-4 focus:ring-primary/20"
+                  autoFocus={true}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
               </div>
             )}
 
