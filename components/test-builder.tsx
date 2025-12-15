@@ -149,25 +149,13 @@ export default function TestBuilder({ editTest, onSaveComplete }: TestBuilderPro
         successMessage += " Redirecting..."
         setMessage({ type: "success", text: successMessage })
         if (onSaveComplete) {
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-builder.tsx:143',message:'Setting timeout for onSaveComplete',data:{hasOnSaveComplete:!!onSaveComplete},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-          // #endregion
           const timeoutId = setTimeout(() => {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-builder.tsx:146',message:'Timeout callback executing',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-            // #endregion
             onSaveComplete()
           }, 1500)
           // Store timeout ID for cleanup if needed
           ;(window as any).__testBuilderTimeout = timeoutId
         } else {
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-builder.tsx:152',message:'Setting timeout for redirect',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-          // #endregion
           setTimeout(() => {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-builder.tsx:155',message:'Redirect timeout executing',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-            // #endregion
             window.location.href = "/"
           }, 1500)
         }

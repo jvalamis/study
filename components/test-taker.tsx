@@ -241,28 +241,16 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
   }
 
   const handleNext = async () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-taker.tsx:133',message:'handleNext called',data:{isLastQuestion,answersLength:answers.length,questionsLength:test.questions.length,currentQuestion},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     if (isLastQuestion) {
       // Calculate results and save grade
       const { correct, total, results } = calculateResults()
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-taker.tsx:137',message:'calculateResults result in handleNext',data:{correct,total,resultsLength:results.length,answersLength:answers.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       const percentage = Math.round((correct / total) * 100)
       
       setSavingGrade(true)
       try {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-taker.tsx:143',message:'Before mapping answers',data:{answersLength:answers.length,resultsLength:results.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         const formData = new FormData()
         formData.append("testId", testId)
         const answerData = answers.map((ans, idx) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-taker.tsx:148',message:'Mapping answer',data:{idx,hasResult:!!results[idx],answerType:typeof ans},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
           return {
             questionIndex: idx,
             answer: ans,
@@ -275,17 +263,8 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
           percentage,
           answers: answerData,
         }))
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-taker.tsx:157',message:'Before saveTestResultAction',data:{testId,answerDataLength:answerData.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         await saveTestResultAction(formData)
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-taker.tsx:160',message:'After saveTestResultAction success',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
       } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-taker.tsx:162',message:'Error saving grade',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         console.error("Error saving grade:", error)
         // Continue even if saving fails
       } finally {
@@ -304,16 +283,10 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
   }
 
   const calculateResults = () => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-taker.tsx:173',message:'calculateResults entry',data:{questionsLength:test.questions.length,answersLength:answers.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     let correct = 0
     const results = test.questions.map((q, idx) => {
       const userAnswer = answers[idx]
       const correctAnswer = q.answer
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-taker.tsx:178',message:'Comparing answers',data:{idx,userAnswer,correctAnswer,userAnswerType:typeof userAnswer,correctAnswerType:typeof correctAnswer},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
       // Handle numeric comparison: compare numbers directly, strings with case-insensitive trim
       let isCorrect: boolean
       if (typeof userAnswer === "number" && typeof correctAnswer === "number") {
@@ -328,20 +301,11 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
       if (isCorrect) correct++
       return { isCorrect, userAnswer, correctAnswer, question: q }
     })
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-taker.tsx:183',message:'calculateResults exit',data:{correct,total:test.questions.length,resultsLength:results.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     return { correct, total: test.questions.length, results }
   }
 
   if (submitted) {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-taker.tsx:185',message:'Submitted view - before calculateResults',data:{answersLength:answers.length,questionsLength:test.questions.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     const { correct, total, results } = calculateResults()
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-taker.tsx:188',message:'Submitted view - after calculateResults',data:{correct,total,resultsLength:results.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     const percentage = Math.round((correct / total) * 100)
     
     // Note: Grade was already saved in handleNext
