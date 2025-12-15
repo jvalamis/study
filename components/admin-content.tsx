@@ -294,7 +294,7 @@ export default function AdminContent() {
                         </div>
                         <div className="flex gap-4 text-sm text-muted-foreground">
                           <p>
-                            {test.questions.length} question{test.questions.length !== 1 ? "s" : ""}
+                            {test.questions?.length || 0} question{(test.questions?.length || 0) !== 1 ? "s" : ""}
                           </p>
                           {testResultsCounts[test.id] !== undefined && (
                             <p className={testResultsCounts[test.id] > 0 ? "text-primary font-medium" : ""}>

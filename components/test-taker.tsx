@@ -32,8 +32,44 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
   const [voicesLoaded, setVoicesLoaded] = useState(false)
   const router = useRouter()
 
+  // Safety check: ensure test has questions and current question exists
+  if (!test.questions || test.questions.length === 0) {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-50 p-4 md:p-8">
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-2 border-red-300">
+            <CardContent className="p-8 text-center">
+              <p className="text-lg text-red-600">This test has no questions. Please contact the administrator.</p>
+              <Button onClick={() => router.push("/")} className="mt-4">
+                Back to Tests
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    )
+  }
+
   const question = test.questions[currentQuestion]
   const isLastQuestion = currentQuestion === test.questions.length - 1
+
+  // Safety check: ensure question exists
+  if (!question) {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-50 p-4 md:p-8">
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-2 border-red-300">
+            <CardContent className="p-8 text-center">
+              <p className="text-lg text-red-600">Question not found. Please contact the administrator.</p>
+              <Button onClick={() => router.push("/")} className="mt-4">
+                Back to Tests
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    )
+  }
 
   // Load voices when component mounts (voices may not be available immediately)
   useEffect(() => {
@@ -62,7 +98,7 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
   }, [])
 
   useEffect(() => {
-    if (question.type === "spelling") {
+    if (question && question.type === "spelling" && question.prompt) {
       // Small delay to ensure voices are ready, or use immediately if not loaded yet
       const timer = setTimeout(() => {
         speakWord(question.prompt)
@@ -70,7 +106,7 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
       return () => clearTimeout(timer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentQuestion, question.type, question.prompt, voicesLoaded])
+  }, [currentQuestion, question?.type, question?.prompt, voicesLoaded])
 
   const speakWord = (word: string) => {
     if ("speechSynthesis" in window) {
@@ -204,7 +240,17 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/a29c59c1-58df-41fe-a303-6013db00baae',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'test-taker.tsx:178',message:'Comparing answers',data:{idx,userAnswer,correctAnswer,userAnswerType:typeof userAnswer,correctAnswerType:typeof correctAnswer},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
       // #endregion
-      const isCorrect = String(userAnswer).toLowerCase().trim() === String(correctAnswer).toLowerCase().trim()
+      // Handle numeric comparison: compare numbers directly, strings with case-insensitive trim
+      let isCorrect: boolean
+      if (typeof userAnswer === "number" && typeof correctAnswer === "number") {
+        isCorrect = userAnswer === correctAnswer
+      } else if (q.type === "numeric") {
+        // For numeric questions, compare as numbers (handle string "5" vs number 5)
+        isCorrect = Number(userAnswer) === Number(correctAnswer) && !isNaN(Number(userAnswer)) && !isNaN(Number(correctAnswer))
+      } else {
+        // For text answers, compare as strings (case-insensitive, trimmed)
+        isCorrect = String(userAnswer).toLowerCase().trim() === String(correctAnswer).toLowerCase().trim()
+      }
       if (isCorrect) correct++
       return { isCorrect, userAnswer, correctAnswer, question: q }
     })
@@ -394,11 +440,16 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
             {question.type === "numeric" && (
               <Input
                 type="number"
-                value={answers[currentQuestion] === "" ? "" : answers[currentQuestion]}
+                value={answers[currentQuestion] === "" || answers[currentQuestion] === undefined ? "" : answers[currentQuestion]}
                 onChange={(e) => {
                   const value = e.target.value
-                  // Convert to number if not empty, otherwise keep as empty string
-                  handleAnswer(value === "" ? "" : Number(value))
+                  // Convert to number if not empty and valid, otherwise keep as empty string
+                  if (value === "" || value === null || value === undefined) {
+                    handleAnswer("")
+                  } else {
+                    const numValue = Number(value)
+                    handleAnswer(isNaN(numValue) ? "" : numValue)
+                  }
                 }}
                 placeholder="Enter a number"
                 className="text-lg"
@@ -420,7 +471,7 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
                   answers[currentQuestion] === "" || 
                   answers[currentQuestion] === undefined || 
                   answers[currentQuestion] === null ||
-                  (question.type === "numeric" && isNaN(Number(answers[currentQuestion])))
+                  (question.type === "numeric" && (answers[currentQuestion] === "" || isNaN(Number(answers[currentQuestion]))))
                 } 
                 className="flex-1"
               >

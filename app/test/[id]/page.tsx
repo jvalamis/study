@@ -22,5 +22,10 @@ export default async function TestPage({ params }: { params: Promise<{ id: strin
     notFound()
   }
 
+  // Validate test has questions
+  if (!test.questions || test.questions.length === 0) {
+    notFound()
+  }
+
   return <TestTaker test={test} testId={id} />
 }

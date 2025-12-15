@@ -205,9 +205,12 @@ export async function getTestResultsAction(testId: string) {
 
     // Sort by timestamp (newest first)
     results.sort((a, b) => {
-      const timeA = new Date(a.timestamp || 0).getTime()
-      const timeB = new Date(b.timestamp || 0).getTime()
-      return timeB - timeA
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0
+      // Handle invalid dates
+      const validTimeA = isNaN(timeA) ? 0 : timeA
+      const validTimeB = isNaN(timeB) ? 0 : timeB
+      return validTimeB - validTimeA
     })
 
     // Calculate statistics
