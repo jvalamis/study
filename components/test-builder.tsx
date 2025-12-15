@@ -328,7 +328,7 @@ export default function TestBuilder({ editTest, onSaveComplete }: TestBuilderPro
             </Label>
             {currentQuestion.type === "multiple_choice" ? (
               <Select
-                value={currentQuestion.answer}
+                value={String(currentQuestion.answer || "")}
                 onValueChange={(value) => setCurrentQuestion({ ...currentQuestion, answer: value })}
               >
                 <SelectTrigger className="mt-2 border-2 text-lg">
