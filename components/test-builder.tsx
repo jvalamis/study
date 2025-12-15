@@ -139,10 +139,12 @@ export default function TestBuilder({ editTest, onSaveComplete }: TestBuilderPro
 
       if (result.error) {
         setMessage({ type: "error", text: result.error })
-      } else {
+      } else if (result.success) {
         let successMessage = editTest?.id ? "Test updated!" : "Test saved!"
-        if (result.deletedResults && result.deletedResultsCount > 0) {
-          successMessage += ` Deleted ${result.deletedResultsCount} grade record${result.deletedResultsCount !== 1 ? 's' : ''}.`
+        // Type guard: check if result has deletedResults properties (from updateTestAction)
+        const updateResult = result as { success: boolean; testId: string; deletedResults?: boolean; deletedResultsCount?: number }
+        if (updateResult.deletedResults && updateResult.deletedResultsCount && updateResult.deletedResultsCount > 0) {
+          successMessage += ` Deleted ${updateResult.deletedResultsCount} grade record${updateResult.deletedResultsCount !== 1 ? 's' : ''}.`
         }
         successMessage += " Redirecting..."
         setMessage({ type: "success", text: successMessage })
