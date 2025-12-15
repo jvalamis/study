@@ -115,46 +115,106 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
 
       const utterance = new SpeechSynthesisUtterance(word)
       
-      // Get available voices and select a child-friendly one
+      // Get available voices and select a child-friendly one with clear enunciation
       const voices = window.speechSynthesis.getVoices()
       
       if (voices.length > 0) {
-        // Prefer female voices that are clear and friendly for kids
-        // Common child-friendly voices: Google US English Female, Microsoft Zira, etc.
-        const preferredVoices = voices.filter(voice => {
-          const name = voice.name.toLowerCase()
-          const lang = voice.lang.toLowerCase()
-          return (
-            (name.includes('female') && lang.includes('en')) ||
-            name.includes('zira') ||
-            name.includes('samantha') ||
-            name.includes('karen') ||
-            name.includes('susan') ||
-            name.includes('hazel') ||
-            (name.includes('google') && name.includes('female')) ||
-            (name.includes('siri') && lang.includes('en'))
-          )
-        })
+        // Priority list of voices known for clear enunciation and kid-friendly tone
+        // These voices are typically clearer and enunciate better
+        const voicePriority = [
+          // Google voices (usually very clear)
+          'google us english female',
+          'google uk english female',
+          'google us english',
+          'google uk english',
+          // Microsoft voices (clear and friendly)
+          'zira', // Microsoft Zira - very clear
+          'samantha', // macOS - clear and friendly
+          'karen', // macOS - Australian, clear
+          'susan', // macOS - British, clear
+          'hazel', // macOS - British, clear
+          'victoria', // macOS - clear
+          'siri', // iOS - clear
+          'siri enhanced', // iOS - enhanced clarity
+          // Other clear voices
+          'female',
+          'alex', // macOS - clear
+          'daniel', // macOS - British, clear
+        ]
         
-        // Use preferred voice if available, otherwise use first English voice
-        if (preferredVoices.length > 0) {
-          utterance.voice = preferredVoices[0]
-        } else {
-          // Fallback to first English voice
+        // Find the best matching voice
+        let selectedVoice = null
+        
+        // First, try to find exact matches from priority list
+        for (const priorityName of voicePriority) {
+          const match = voices.find(voice => {
+            const name = voice.name.toLowerCase()
+            const lang = voice.lang.toLowerCase()
+            return name.includes(priorityName) && lang.includes('en')
+          })
+          if (match) {
+            selectedVoice = match
+            break
+          }
+        }
+        
+        // If no priority match, prefer voices with "enhanced", "premium", or "neural" in name
+        if (!selectedVoice) {
+          const enhancedVoices = voices.filter(voice => {
+            const name = voice.name.toLowerCase()
+            const lang = voice.lang.toLowerCase()
+            return (
+              lang.includes('en') &&
+              (name.includes('enhanced') ||
+               name.includes('premium') ||
+               name.includes('neural') ||
+               name.includes('natural'))
+            )
+          })
+          if (enhancedVoices.length > 0) {
+            selectedVoice = enhancedVoices[0]
+          }
+        }
+        
+        // If still no match, prefer female English voices (generally clearer for kids)
+        if (!selectedVoice) {
+          const femaleEnglishVoices = voices.filter(voice => {
+            const name = voice.name.toLowerCase()
+            const lang = voice.lang.toLowerCase()
+            return lang.includes('en') && name.includes('female')
+          })
+          if (femaleEnglishVoices.length > 0) {
+            selectedVoice = femaleEnglishVoices[0]
+          }
+        }
+        
+        // Fallback to any English voice
+        if (!selectedVoice) {
           const englishVoices = voices.filter(v => v.lang.toLowerCase().includes('en'))
           if (englishVoices.length > 0) {
-            utterance.voice = englishVoices[0]
+            selectedVoice = englishVoices[0]
           } else {
-            utterance.voice = voices[0]
+            selectedVoice = voices[0]
           }
+        }
+        
+        if (selectedVoice) {
+          utterance.voice = selectedVoice
         }
       }
       
-      // Optimize for children: slower, slightly higher pitch, clear
-      utterance.rate = 0.75 // Slower for better comprehension
-      utterance.pitch = 1.1 // Slightly higher pitch (more friendly)
-      utterance.volume = 1
-      utterance.lang = 'en-US' // Ensure English pronunciation
+      // Optimize for children: slower rate for better comprehension, clear enunciation
+      utterance.rate = 0.7 // Slower for better word recognition and comprehension
+      utterance.pitch = 1.0 // Neutral pitch for clarity (not too high or low)
+      utterance.volume = 1.0 // Full volume
+      utterance.lang = 'en-US' // Ensure US English pronunciation for consistency
+      
+      // Add slight pause between words if multiple words
+      const words = word.trim().split(/\s+/)
+      if (words.length > 1) {
+        // For multi-word phrases, add commas to create natural pauses
+        utterance.text = words.join(', ')
+      }
       
       window.speechSynthesis.speak(utterance)
     }
@@ -397,6 +457,14 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
 
             {question.type === "spelling" && (
               <div className="space-y-4">
+                <div className="text-center p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border-2 border-blue-200 dark:border-blue-800">
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+                    💡 Tip: Listen carefully and type the word you hear!
+                  </p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300">
+                    Click the button above to hear the word again if needed.
+                  </p>
+                </div>
                 <div className="relative">
                   <Input
                     type="text"
