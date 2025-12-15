@@ -108,6 +108,20 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestion, question?.type, question?.prompt, voicesLoaded])
 
+  // Auto-focus input for spelling questions
+  useEffect(() => {
+    if (question && question.type === "spelling") {
+      // Small delay to ensure the input is rendered
+      const timer = setTimeout(() => {
+        const input = document.querySelector('input[type="text"]') as HTMLInputElement
+        if (input) {
+          input.focus()
+        }
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [currentQuestion, question?.type])
+
   const speakWord = (word: string) => {
     if ("speechSynthesis" in window) {
       // Cancel any ongoing speech
@@ -392,6 +406,11 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
             </Button>
             <Button onClick={() => window.location.reload()}>Take Again</Button>
           </div>
+          <div className="mt-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              📊 Your score has been saved. Admins can view all test results in the admin panel.
+            </p>
+          </div>
         </div>
       </main>
     )
@@ -466,6 +485,19 @@ export default function TestTaker({ test, testId }: { test: Test; testId: string
                   autoComplete="off"
                   spellCheck={false}
                 />
+                {/* Visual letter boxes - shows letters as they type (kid-friendly visual feedback) */}
+                {String(answers[currentQuestion]).length > 0 && (
+                  <div className="flex justify-center gap-2 flex-wrap">
+                    {String(answers[currentQuestion]).split('').map((letter, idx) => (
+                      <div
+                        key={idx}
+                        className="w-14 h-14 rounded-xl border-3 border-primary bg-primary/10 flex items-center justify-center text-3xl font-bold text-primary shadow-md transition-all hover:scale-110"
+                      >
+                        {letter.toUpperCase()}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
